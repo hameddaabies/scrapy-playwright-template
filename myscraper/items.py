@@ -15,3 +15,10 @@ class BookItem(BaseModel):
     in_stock: bool
     rating: int = Field(ge=1, le=5)
     url: str
+
+
+class QuoteItem(BaseModel):
+    text: str
+    author: str
+    tags: list[str]
+    url: str
