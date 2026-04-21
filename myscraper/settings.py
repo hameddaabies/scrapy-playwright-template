@@ -51,6 +51,8 @@ DOWNLOADER_MIDDLEWARES = {
 # Item pipelines.
 ITEM_PIPELINES = {
     "myscraper.pipelines.ValidationPipeline": 300,
+    # Log per-run item count after validation — enable to track yield per spider.
+    # "myscraper.pipelines.ItemCountPipeline": 900,
 }
 
 # Feed exports — JSON Lines by default.
