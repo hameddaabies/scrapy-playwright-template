@@ -48,3 +48,30 @@ class ProxyMiddleware:
         if self.proxy_url and "proxy" not in request.meta:
             request.meta["proxy"] = self.proxy_url
         return None
+
+
+class CookieHeaderMiddleware:
+    """Attaches a raw ``Cookie`` header from ``COOKIE_HEADER`` env (if present).
+
+    Useful for bootstrapping an authenticated scrape from a logged-in browser
+    session: open DevTools → Network → copy the ``Cookie`` request header and
+    drop it into ``.env``. Skips requests that already carry a Cookie header
+    so per-request overrides win.
+
+    Scrapy's built-in cookies middleware handles Set-Cookie round-tripping;
+    this one only seeds the initial value. Leave both enabled together when
+    the target site refreshes cookies mid-session.
+    """
+
+    def __init__(self, cookie_header: str | None) -> None:
+        self.cookie_header = cookie_header
+
+    @classmethod
+    def from_crawler(cls, crawler):  # type: ignore[no-untyped-def]
+        raw = os.getenv("COOKIE_HEADER", "").strip()
+        return cls(raw or None)
+
+    def process_request(self, request, spider):  # type: ignore[no-untyped-def]
+        if self.cookie_header and "Cookie" not in request.headers:
+            request.headers["Cookie"] = self.cookie_header
+        return None

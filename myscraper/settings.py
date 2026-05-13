@@ -46,6 +46,11 @@ PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30_000
 DOWNLOADER_MIDDLEWARES = {
     "myscraper.middlewares.RotateUserAgentMiddleware": 400,
     "myscraper.middlewares.ProxyMiddleware": 410,
+    # Seeds a raw Cookie header from the COOKIE_HEADER env var. Enable when
+    # scraping pages that require a logged-in session, a cookie consent token,
+    # or a Cloudflare clearance cookie — paste the header from browser DevTools
+    # into .env and uncomment.
+    # "myscraper.middlewares.CookieHeaderMiddleware": 420,
 }
 
 # Item pipelines.

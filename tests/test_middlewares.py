@@ -7,6 +7,7 @@ from scrapy.http import Request
 
 from myscraper.middlewares import (
     DEFAULT_USER_AGENTS,
+    CookieHeaderMiddleware,
     ProxyMiddleware,
     RotateUserAgentMiddleware,
 )
@@ -59,3 +60,34 @@ def test_proxy_mw_does_not_override_existing_meta() -> None:
     request = Request(url="https://example.com", meta={"proxy": "http://override:9090"})
     mw.process_request(request, spider=None)
     assert request.meta["proxy"] == "http://override:9090"
+
+
+def test_cookie_mw_noop_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("COOKIE_HEADER", raising=False)
+    mw = CookieHeaderMiddleware.from_crawler(crawler=None)
+    request = Request(url="https://example.com")
+    mw.process_request(request, spider=None)
+    assert "Cookie" not in request.headers
+
+
+def test_cookie_mw_sets_header_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COOKIE_HEADER", "sessionid=abc; csrftoken=xyz")
+    mw = CookieHeaderMiddleware.from_crawler(crawler=None)
+    request = Request(url="https://example.com")
+    mw.process_request(request, spider=None)
+    assert request.headers["Cookie"].decode("ascii") == "sessionid=abc; csrftoken=xyz"
+
+
+def test_cookie_mw_treats_whitespace_env_as_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COOKIE_HEADER", "   ")
+    mw = CookieHeaderMiddleware.from_crawler(crawler=None)
+    request = Request(url="https://example.com")
+    mw.process_request(request, spider=None)
+    assert "Cookie" not in request.headers
+
+
+def test_cookie_mw_does_not_override_existing_header() -> None:
+    mw = CookieHeaderMiddleware(cookie_header="env=value")
+    request = Request(url="https://example.com", headers={"Cookie": "per_request=keep"})
+    mw.process_request(request, spider=None)
+    assert request.headers["Cookie"].decode("ascii") == "per_request=keep"
