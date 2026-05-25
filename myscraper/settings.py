@@ -26,6 +26,17 @@ AUTOTHROTTLE_START_DELAY = 1.0
 AUTOTHROTTLE_MAX_DELAY = 30.0
 AUTOTHROTTLE_TARGET_CONCURRENCY = 2.0
 
+# Per-domain throttle overrides — pin a tighter concurrency / longer delay on
+# specific hosts without slowing the whole crawl. Useful when one upstream is
+# strict (small marketing site, rate-limited API) while the rest of the run is
+# polite default. Keys are the request slot — for plain HTTP, Scrapy uses the
+# hostname by default. Uncomment and tune per target.
+#
+# DOWNLOAD_SLOTS = {
+#     "books.toscrape.com": {"concurrency": 1, "delay": 2.0, "randomize_delay": True},
+#     "quotes.toscrape.com": {"concurrency": 4, "delay": 0.5},
+# }
+
 # Retries on transient errors.
 RETRY_ENABLED = True
 RETRY_TIMES = 3
