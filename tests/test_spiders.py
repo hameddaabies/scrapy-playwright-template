@@ -68,3 +68,52 @@ def test_parse_detail_defaults_unknown_rating_to_one() -> None:
 def test_parse_detail_defaults_missing_price_to_zero() -> None:
     html = _BOOK_DETAIL_HTML.replace('<p class="price_color">£51.77</p>', "")
     assert _parse_detail(html)["price_gbp"] == 0.0
+
+
+_LISTING_URL = "https://books.toscrape.com/"
+
+# Trimmed-down copy of a real books.toscrape.com listing page — two product
+# cards plus the "next" pagination control.
+_BOOK_LISTING_HTML = """
+<html><body>
+  <ol class="row">
+    <li><article class="product_pod">
+      <h3><a href="catalogue/a-light-in-the-attic_1000/index.html">A Light...</a></h3>
+    </article></li>
+    <li><article class="product_pod">
+      <h3><a href="catalogue/tipping-the-velvet_999/index.html">Tipping...</a></h3>
+    </article></li>
+  </ol>
+  <li class="next"><a href="catalogue/page-2.html">next</a></li>
+</body></html>
+"""
+
+
+def _parse_listing(html: str, url: str = _LISTING_URL) -> list:
+    spider = BooksSpider()
+    return list(spider.parse(_response(html, url)))
+
+
+def test_parse_yields_detail_request_per_card() -> None:
+    requests = _parse_listing(_BOOK_LISTING_HTML)
+    detail_reqs = [r for r in requests if r.callback.__name__ == "parse_detail"]
+    assert [r.url for r in detail_reqs] == [
+        "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+        "https://books.toscrape.com/catalogue/tipping-the-velvet_999/index.html",
+    ]
+
+
+def test_parse_follows_next_pagination_link() -> None:
+    requests = _parse_listing(_BOOK_LISTING_HTML)
+    next_reqs = [r for r in requests if r.callback.__name__ == "parse"]
+    assert [r.url for r in next_reqs] == [
+        "https://books.toscrape.com/catalogue/page-2.html"
+    ]
+
+
+def test_parse_stops_when_no_next_link() -> None:
+    html = _BOOK_LISTING_HTML.replace(
+        '<li class="next"><a href="catalogue/page-2.html">next</a></li>', ""
+    )
+    requests = _parse_listing(html)
+    assert all(r.callback.__name__ != "parse" for r in requests)
