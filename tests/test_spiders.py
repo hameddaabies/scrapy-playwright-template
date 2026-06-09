@@ -10,6 +10,7 @@ from __future__ import annotations
 from scrapy.http import HtmlResponse, Request
 
 from myscraper.spiders.books import BooksSpider
+from myscraper.spiders.quotes import QuotesSpider
 
 _DETAIL_URL = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
 
@@ -117,3 +118,65 @@ def test_parse_stops_when_no_next_link() -> None:
     )
     requests = _parse_listing(html)
     assert all(r.callback.__name__ != "parse" for r in requests)
+
+
+_QUOTES_URL = "https://quotes.toscrape.com/"
+
+# Trimmed-down copy of a real quotes.toscrape.com page — two quote blocks plus
+# the "next" pagination control. Whitespace is left ragged on purpose so the
+# strip() in the spider is exercised.
+_QUOTES_HTML = """
+<html><body>
+  <div class="quote">
+    <span class="text">  "The world as we have created it." </span>
+    <small class="author">Albert Einstein</small>
+    <a class="tag">change</a>
+    <a class="tag">deep-thoughts</a>
+  </div>
+  <div class="quote">
+    <span class="text">"It is our choices."</span>
+    <small class="author">J.K. Rowling</small>
+    <a class="tag">abilities</a>
+  </div>
+  <li class="next"><a href="/page/2/">Next</a></li>
+</body></html>
+"""
+
+
+def _parse_quotes(html: str, url: str = _QUOTES_URL) -> list:
+    spider = QuotesSpider()
+    return list(spider.parse(_response(html, url)))
+
+
+def test_quotes_parse_extracts_all_fields() -> None:
+    items = [r for r in _parse_quotes(_QUOTES_HTML) if isinstance(r, dict)]
+    assert items == [
+        {
+            "text": '"The world as we have created it."',
+            "author": "Albert Einstein",
+            "tags": ["change", "deep-thoughts"],
+            "url": _QUOTES_URL,
+        },
+        {
+            "text": '"It is our choices."',
+            "author": "J.K. Rowling",
+            "tags": ["abilities"],
+            "url": _QUOTES_URL,
+        },
+    ]
+
+
+def test_quotes_parse_yields_empty_tags_when_absent() -> None:
+    html = _QUOTES_HTML.replace('<a class="tag">abilities</a>', "")
+    items = [r for r in _parse_quotes(html) if isinstance(r, dict)]
+    assert items[1]["tags"] == []
+
+
+def test_quotes_parse_follows_next_pagination_link() -> None:
+    next_reqs = [r for r in _parse_quotes(_QUOTES_HTML) if not isinstance(r, dict)]
+    assert [r.url for r in next_reqs] == ["https://quotes.toscrape.com/page/2/"]
+
+
+def test_quotes_parse_stops_when_no_next_link() -> None:
+    html = _QUOTES_HTML.replace('<li class="next"><a href="/page/2/">Next</a></li>', "")
+    assert all(isinstance(r, dict) for r in _parse_quotes(html))
