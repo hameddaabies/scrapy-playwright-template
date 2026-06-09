@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import os
 import random
+import re
+
+from scrapy.exceptions import IgnoreRequest
 
 DEFAULT_USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -74,4 +77,36 @@ class CookieHeaderMiddleware:
     def process_request(self, request, spider):  # type: ignore[no-untyped-def]
         if self.cookie_header and "Cookie" not in request.headers:
             request.headers["Cookie"] = self.cookie_header
+        return None
+
+
+class UrlDenyPatternMiddleware:
+    """Drops outgoing requests whose URL matches any deny regex.
+
+    ``allowed_domains`` scopes a crawl by host; this scopes it by *path*. Set
+    ``URL_DENY_PATTERNS`` to a comma-separated list of regexes — any request
+    whose URL matches one (via ``re.search``) is dropped before it hits the
+    network. Handy for pruning cart/login/logout/tracking endpoints or
+    faceted-filter URLs that explode the crawl frontier.
+
+    Patterns are split on commas (matching the ``USER_AGENTS`` convention), so
+    avoid commas *inside* a pattern — prefer ``\\d{2}`` over a ``{2,4}``-style
+    bound, or wire your own loader if you need richer expressions.
+    """
+
+    def __init__(self, patterns: list[str]) -> None:
+        self.patterns = [re.compile(p) for p in patterns]
+
+    @classmethod
+    def from_crawler(cls, crawler):  # type: ignore[no-untyped-def]
+        raw = os.getenv("URL_DENY_PATTERNS", "")
+        pats = [p.strip() for p in raw.split(",") if p.strip()]
+        return cls(pats)
+
+    def process_request(self, request, spider):  # type: ignore[no-untyped-def]
+        for pattern in self.patterns:
+            if pattern.search(request.url):
+                raise IgnoreRequest(
+                    f"URL matched deny pattern {pattern.pattern!r}: {request.url}"
+                )
         return None

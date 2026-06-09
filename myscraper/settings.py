@@ -62,7 +62,18 @@ DOWNLOADER_MIDDLEWARES = {
     # or a Cloudflare clearance cookie — paste the header from browser DevTools
     # into .env and uncomment.
     # "myscraper.middlewares.CookieHeaderMiddleware": 420,
+    # Drops requests whose URL matches a regex in URL_DENY_PATTERNS (comma-
+    # separated). Scopes the crawl by path where allowed_domains scopes by host
+    # — prune cart/login/tracking or faceted-filter URLs. Runs early so dropped
+    # requests never reach the network. Uncomment to enable.
+    # "myscraper.middlewares.UrlDenyPatternMiddleware": 390,
 }
+
+# Cap how deep link-following recurses from the start URLs. 0 means unlimited
+# (the default). Set a positive value to bound a frontier that would otherwise
+# crawl an entire site via "next"/related links. Pairs well with the URL deny
+# patterns above.
+# DEPTH_LIMIT = 3
 
 # Item pipelines.
 ITEM_PIPELINES = {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from scrapy.exceptions import IgnoreRequest
 from scrapy.http import Request
 
 from myscraper.middlewares import (
@@ -10,6 +11,7 @@ from myscraper.middlewares import (
     CookieHeaderMiddleware,
     ProxyMiddleware,
     RotateUserAgentMiddleware,
+    UrlDenyPatternMiddleware,
 )
 
 
@@ -91,3 +93,36 @@ def test_cookie_mw_does_not_override_existing_header() -> None:
     request = Request(url="https://example.com", headers={"Cookie": "per_request=keep"})
     mw.process_request(request, spider=None)
     assert request.headers["Cookie"].decode("ascii") == "per_request=keep"
+
+
+def test_url_deny_mw_no_patterns_passes_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("URL_DENY_PATTERNS", raising=False)
+    mw = UrlDenyPatternMiddleware.from_crawler(crawler=None)
+    request = Request(url="https://example.com/products/42")
+    assert mw.process_request(request, spider=None) is None
+
+
+def test_url_deny_mw_parses_comma_separated_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("URL_DENY_PATTERNS", "/cart, /login ,/logout")
+    mw = UrlDenyPatternMiddleware.from_crawler(crawler=None)
+    assert [p.pattern for p in mw.patterns] == ["/cart", "/login", "/logout"]
+
+
+def test_url_deny_mw_drops_matching_request() -> None:
+    mw = UrlDenyPatternMiddleware([r"/cart", r"\?sort="])
+    request = Request(url="https://example.com/cart")
+    with pytest.raises(IgnoreRequest):
+        mw.process_request(request, spider=None)
+
+
+def test_url_deny_mw_passes_non_matching_request() -> None:
+    mw = UrlDenyPatternMiddleware([r"/cart", r"/login"])
+    request = Request(url="https://example.com/products/42")
+    assert mw.process_request(request, spider=None) is None
+
+
+def test_url_deny_mw_matches_query_string_pattern() -> None:
+    mw = UrlDenyPatternMiddleware([r"\?sort="])
+    request = Request(url="https://example.com/list?sort=price")
+    with pytest.raises(IgnoreRequest):
+        mw.process_request(request, spider=None)
