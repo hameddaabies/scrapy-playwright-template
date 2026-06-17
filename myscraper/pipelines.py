@@ -19,6 +19,23 @@ _SPIDER_MODELS: dict[str, type[BaseModel]] = {
 
 
 class ValidationPipeline:
+    """Rejects malformed items at the schema boundary.
+
+    Each rejection is recorded under the ``validation/dropped`` stat, plus a
+    per-spider ``validation/dropped/<spider>`` breakdown, so the final crawl
+    stats show how many items failed schema validation — distinct from
+    Scrapy's catch-all ``item_dropped_count``, which also counts items dropped
+    for other reasons. Stats wiring is optional: when constructed without a
+    stats collector (e.g. in unit tests) the counters are simply skipped.
+    """
+
+    def __init__(self, stats=None) -> None:  # type: ignore[no-untyped-def]
+        self.stats = stats
+
+    @classmethod
+    def from_crawler(cls, crawler):  # type: ignore[no-untyped-def]
+        return cls(stats=crawler.stats)
+
     def process_item(self, item, spider):  # type: ignore[no-untyped-def]
         model = _SPIDER_MODELS.get(spider.name)
         if model is None:
@@ -26,6 +43,9 @@ class ValidationPipeline:
         try:
             validated = model.model_validate(dict(item))
         except ValidationError as e:
+            if self.stats is not None:
+                self.stats.inc_value("validation/dropped")
+                self.stats.inc_value(f"validation/dropped/{spider.name}")
             raise DropItem(f"invalid item: {e}") from e
         return validated.model_dump()
 

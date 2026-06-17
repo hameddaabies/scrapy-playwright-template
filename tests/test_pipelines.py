@@ -111,3 +111,28 @@ def test_validation_uses_quote_schema_for_quotes_spider() -> None:
     bad_quote = quote | {"tags": "not-a-list"}
     with pytest.raises(DropItem):
         pipeline.process_item(bad_quote, _spider(name="quotes"))
+
+
+class _StubStats:
+    """Minimal stand-in for Scrapy's StatsCollector."""
+
+    def __init__(self) -> None:
+        self.values: dict[str, int] = {}
+
+    def inc_value(self, key: str, count: int = 1) -> None:
+        self.values[key] = self.values.get(key, 0) + count
+
+
+def test_validation_records_drop_in_stats() -> None:
+    stats = _StubStats()
+    pipeline = ValidationPipeline(stats=stats)
+    with pytest.raises(DropItem):
+        pipeline.process_item(_valid_book() | {"rating": 9}, _spider(name="books"))
+    assert stats.values == {"validation/dropped": 1, "validation/dropped/books": 1}
+
+
+def test_validation_does_not_touch_stats_for_valid_item() -> None:
+    stats = _StubStats()
+    pipeline = ValidationPipeline(stats=stats)
+    pipeline.process_item(_valid_book(), _spider(name="books"))
+    assert stats.values == {}
