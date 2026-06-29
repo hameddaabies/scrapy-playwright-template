@@ -17,6 +17,21 @@ import scrapy
 RATING_WORDS = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 
 
+def parse_price(text: str) -> float:
+    """Parse a price from a currency string, tolerating thousands separators.
+
+    Strips the leading currency symbol and digit-group commas before parsing,
+    so a four-figure price such as ``"£1,234.56"`` yields ``1234.56`` instead of
+    truncating to ``234.56`` (a naive ``\\d+\\.\\d+`` match starts at the comma).
+    Returns ``0.0`` when no numeric price is found, so a missing price degrades
+    gracefully rather than crashing the parse.
+    """
+    match = re.search(r"\d[\d,]*\.\d+", text)
+    if not match:
+        return 0.0
+    return float(match.group(0).replace(",", ""))
+
+
 class BooksSpider(scrapy.Spider):
     name = "books"
     allowed_domains = ["books.toscrape.com"]
@@ -35,9 +50,7 @@ class BooksSpider(scrapy.Spider):
 
     def parse_detail(self, response):
         title = response.css("div.product_main h1::text").get("").strip()
-        price_str = response.css("p.price_color::text").get("")
-        match = re.search(r"(\d+\.\d+)", price_str)
-        price_gbp = float(match.group(1)) if match else 0.0
+        price_gbp = parse_price(response.css("p.price_color::text").get(""))
 
         availability = response.css("p.availability::text").getall()
         in_stock = any("In stock" in line for line in availability)

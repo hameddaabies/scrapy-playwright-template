@@ -71,6 +71,11 @@ def test_parse_detail_defaults_missing_price_to_zero() -> None:
     assert _parse_detail(html)["price_gbp"] == 0.0
 
 
+def test_parse_detail_keeps_thousands_separator_in_price() -> None:
+    html = _BOOK_DETAIL_HTML.replace("£51.77", "£1,234.56")
+    assert _parse_detail(html)["price_gbp"] == 1234.56
+
+
 _LISTING_URL = "https://books.toscrape.com/"
 
 # Trimmed-down copy of a real books.toscrape.com listing page — two product
