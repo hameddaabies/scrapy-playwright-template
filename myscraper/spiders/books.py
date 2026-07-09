@@ -23,10 +23,12 @@ def parse_price(text: str) -> float:
     Strips the leading currency symbol and digit-group commas before parsing,
     so a four-figure price such as ``"£1,234.56"`` yields ``1234.56`` instead of
     truncating to ``234.56`` (a naive ``\\d+\\.\\d+`` match starts at the comma).
+    The fractional part is optional, so a whole-number price such as ``"£52"``
+    yields ``52.0`` rather than falling through to the missing-price default.
     Returns ``0.0`` when no numeric price is found, so a missing price degrades
     gracefully rather than crashing the parse.
     """
-    match = re.search(r"\d[\d,]*\.\d+", text)
+    match = re.search(r"\d[\d,]*(?:\.\d+)?", text)
     if not match:
         return 0.0
     return float(match.group(0).replace(",", ""))
