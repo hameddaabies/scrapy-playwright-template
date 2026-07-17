@@ -126,3 +126,8 @@ def test_url_deny_mw_matches_query_string_pattern() -> None:
     request = Request(url="https://example.com/list?sort=price")
     with pytest.raises(IgnoreRequest):
         mw.process_request(request, spider=None)
+
+
+def test_url_deny_mw_names_invalid_regex_pattern() -> None:
+    with pytest.raises(ValueError, match=r"invalid URL deny pattern '\(unclosed'"):
+        UrlDenyPatternMiddleware([r"/cart", r"(unclosed"])

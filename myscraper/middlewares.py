@@ -95,7 +95,18 @@ class UrlDenyPatternMiddleware:
     """
 
     def __init__(self, patterns: list[str]) -> None:
-        self.patterns = [re.compile(p) for p in patterns]
+        compiled = []
+        for pattern in patterns:
+            try:
+                compiled.append(re.compile(pattern))
+            except re.error as exc:
+                # Patterns come from an env var, so a bare re.error at startup
+                # ("missing ), unterminated subpattern") gives no hint which
+                # entry is broken. Name the offending pattern instead.
+                raise ValueError(
+                    f"invalid URL deny pattern {pattern!r}: {exc}"
+                ) from exc
+        self.patterns = compiled
 
     @classmethod
     def from_crawler(cls, crawler):  # type: ignore[no-untyped-def]
