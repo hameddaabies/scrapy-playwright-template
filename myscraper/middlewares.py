@@ -23,6 +23,14 @@ DEFAULT_USER_AGENTS = [
 
 
 class RotateUserAgentMiddleware:
+    """Sets a random ``User-Agent`` header from a rotating pool.
+
+    Skips requests that already carry a User-Agent header so per-request
+    overrides win — matching the ``ProxyMiddleware`` / ``CookieHeaderMiddleware``
+    convention. A spider that pins a specific UA on a single ``Request`` (e.g.
+    a mobile UA for one endpoint) keeps it instead of having it clobbered.
+    """
+
     def __init__(self, user_agents: list[str]) -> None:
         self.user_agents = user_agents
 
@@ -33,7 +41,8 @@ class RotateUserAgentMiddleware:
         return cls(uas)
 
     def process_request(self, request, spider):  # type: ignore[no-untyped-def]
-        request.headers["User-Agent"] = random.choice(self.user_agents)
+        if "User-Agent" not in request.headers:
+            request.headers["User-Agent"] = random.choice(self.user_agents)
         return None
 
 

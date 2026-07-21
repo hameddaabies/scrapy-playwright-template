@@ -41,6 +41,13 @@ def test_rotate_ua_sets_header_from_pool() -> None:
     assert request.headers["User-Agent"].decode("ascii") == "only-ua"
 
 
+def test_rotate_ua_does_not_override_existing_header() -> None:
+    mw = RotateUserAgentMiddleware(["pool-ua"])
+    request = Request(url="https://example.com", headers={"User-Agent": "pinned-ua"})
+    mw.process_request(request, spider=None)
+    assert request.headers["User-Agent"].decode("ascii") == "pinned-ua"
+
+
 def test_proxy_mw_no_proxy_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PROXY_URL", raising=False)
     mw = ProxyMiddleware.from_crawler(crawler=None)
