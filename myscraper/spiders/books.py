@@ -34,6 +34,19 @@ def parse_price(text: str) -> float:
     return float(match.group(0).replace(",", ""))
 
 
+def parse_rating(class_attr: str) -> int | None:
+    """Parse a 1-5 star rating from a ``star-rating`` class attribute.
+
+    Returns ``None`` when the word after ``star-rating`` is absent or not one
+    of One-Five. An unreadable rating must stay distinguishable from a genuine
+    one-star book: defaulting to ``1`` would make a renamed class or a missing
+    element indistinguishable from real data, and the fabricated value would
+    pass schema validation unnoticed.
+    """
+    rating_word = class_attr.replace("star-rating", "").strip()
+    return RATING_WORDS.get(rating_word)
+
+
 class BooksSpider(scrapy.Spider):
     name = "books"
     allowed_domains = ["books.toscrape.com"]
@@ -57,9 +70,7 @@ class BooksSpider(scrapy.Spider):
         availability = response.css("p.availability::text").getall()
         in_stock = any("In stock" in line for line in availability)
 
-        rating_class = response.css("p.star-rating::attr(class)").get("")
-        rating_word = rating_class.replace("star-rating", "").strip()
-        rating = RATING_WORDS.get(rating_word, 1)
+        rating = parse_rating(response.css("p.star-rating::attr(class)").get(""))
 
         yield {
             "title": title,

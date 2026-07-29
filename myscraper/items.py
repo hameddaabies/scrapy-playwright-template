@@ -13,7 +13,9 @@ class BookItem(BaseModel):
     title: str
     price_gbp: float = Field(ge=0)
     in_stock: bool
-    rating: int = Field(ge=1, le=5)
+    # Optional so an unreadable star-rating is recorded as "unknown" rather
+    # than fabricated as a one-star book. A present value is still bounded 1-5.
+    rating: int | None = Field(default=None, ge=1, le=5)
     url: str
 
 

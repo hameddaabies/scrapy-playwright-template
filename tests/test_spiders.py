@@ -61,9 +61,14 @@ def test_parse_detail_reports_out_of_stock() -> None:
     assert _parse_detail(html)["in_stock"] is False
 
 
-def test_parse_detail_defaults_unknown_rating_to_one() -> None:
+def test_parse_detail_reports_unknown_rating_as_none() -> None:
     html = _BOOK_DETAIL_HTML.replace("star-rating Three", "star-rating Zero")
-    assert _parse_detail(html)["rating"] == 1
+    assert _parse_detail(html)["rating"] is None
+
+
+def test_parse_detail_reports_missing_rating_element_as_none() -> None:
+    html = _BOOK_DETAIL_HTML.replace('<p class="star-rating Three"></p>', "")
+    assert _parse_detail(html)["rating"] is None
 
 
 def test_parse_detail_defaults_missing_price_to_zero() -> None:
