@@ -11,7 +11,9 @@ A production-shaped **Scrapy + Playwright** scaffold for scraping modern JS-heav
 - ✅ **RETRY middleware** — handles 429 / 503 / timeouts with exponential backoff
 - ✅ **JSON Lines feed** — one record per line, stream-friendly, easy to post-process
 - ✅ **Pydantic item validation** — reject malformed items at the pipeline boundary
-- ✅ **Example spider** — scrapes `books.toscrape.com` (public practice site, no ToS issues)
+- ✅ **Two example spiders** — `books.toscrape.com` and `quotes.toscrape.com` (public practice sites, no ToS issues)
+- ✅ **URL deny + depth-limit examples** — scope a crawl by path or frontier depth, not just by host
+- ✅ **Opt-in cookie + item-count middleware/pipeline** — commented in `settings.py`, one line to enable
 
 ## Quickstart
 
@@ -21,9 +23,11 @@ playwright install chromium   # one-time
 cp .env.example .env          # edit if you want to use a proxy
 
 scrapy crawl books -O output/books.jsonl
+scrapy crawl quotes -O output/quotes.jsonl
 ```
 
 Check `output/books.jsonl` — you should see ~1000 books with title, price, availability, and rating.
+`output/quotes.jsonl` has ~100 quotes with text, author, and tags.
 
 ## Customizing
 
@@ -78,12 +82,14 @@ scrapy-playwright-template/
 ├── myscraper/
 │   ├── __init__.py
 │   ├── items.py              # Pydantic-validated items
-│   ├── middlewares.py        # UA rotation + proxy
-│   ├── pipelines.py          # validation + normalization
+│   ├── middlewares.py        # UA rotation, proxy, cookie, URL-deny
+│   ├── pipelines.py          # validation + item-count logging
 │   ├── settings.py           # Playwright + throttle + retry config
 │   └── spiders/
 │       ├── __init__.py
-│       └── books.py          # example spider (books.toscrape.com)
+│       ├── books.py          # example spider (books.toscrape.com)
+│       └── quotes.py         # example spider (quotes.toscrape.com)
+├── tests/                    # fixture-driven spider/middleware/pipeline tests
 ├── requirements.txt
 ├── .env.example
 └── README.md
