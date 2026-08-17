@@ -98,6 +98,13 @@ def test_validation_drops_item_missing_required_field() -> None:
         pipeline.process_item(bad, _spider(name="books"))
 
 
+def test_validation_drops_book_with_relative_url() -> None:
+    pipeline = ValidationPipeline()
+    bad = _valid_book() | {"url": "/catalogue/light-in-the-attic_1000/index.html"}
+    with pytest.raises(DropItem):
+        pipeline.process_item(bad, _spider(name="books"))
+
+
 def test_validation_passes_through_unknown_spider() -> None:
     pipeline = ValidationPipeline()
     item = {"anything": "goes", "schema": None}
@@ -117,6 +124,18 @@ def test_validation_uses_quote_schema_for_quotes_spider() -> None:
     bad_quote = quote | {"tags": "not-a-list"}
     with pytest.raises(DropItem):
         pipeline.process_item(bad_quote, _spider(name="quotes"))
+
+
+def test_validation_drops_quote_with_scheme_less_url() -> None:
+    pipeline = ValidationPipeline()
+    quote = {
+        "text": "The world as we have created it is a process of our thinking.",
+        "author": "Albert Einstein",
+        "tags": ["change"],
+        "url": "quotes.toscrape.com/page/1/",
+    }
+    with pytest.raises(DropItem):
+        pipeline.process_item(quote, _spider(name="quotes"))
 
 
 class _StubStats:
