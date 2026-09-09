@@ -15,6 +15,8 @@ from .items import BookItem, QuoteItem
 _SPIDER_MODELS: dict[str, type[BaseModel]] = {
     "books": BookItem,
     "quotes": QuoteItem,
+    # The Playwright-rendered variant yields the same schema as "quotes".
+    "quotes_js": QuoteItem,
 }
 
 

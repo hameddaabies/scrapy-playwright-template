@@ -7,10 +7,13 @@ without hitting the network.
 
 from __future__ import annotations
 
+import asyncio
+
 from scrapy.http import HtmlResponse, Request
 
 from myscraper.spiders.books import BooksSpider
 from myscraper.spiders.quotes import QuotesSpider
+from myscraper.spiders.quotes_js import QuotesJsSpider
 
 _DETAIL_URL = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
 
@@ -195,3 +198,75 @@ def test_quotes_parse_follows_next_pagination_link() -> None:
 def test_quotes_parse_stops_when_no_next_link() -> None:
     html = _QUOTES_HTML.replace('<li class="next"><a href="/page/2/">Next</a></li>', "")
     assert all(isinstance(r, dict) for r in _parse_quotes(html))
+
+
+_JS_URL = "https://quotes.toscrape.com/js/"
+
+# The DOM the client-side script builds on quotes.toscrape.com/js/. The served
+# HTML contains none of this, so the fixture stands in for the post-render page
+# a Playwright-backed response hands to the callback.
+_JS_RENDERED_HTML = """
+<html><body>
+  <div class="quote">
+    <span class="text">"The world as we have created it."</span>
+    <span>by <small class="author">Albert Einstein</small></span>
+    <div class="tags">Tags: <a class="tag">change</a> <a class="tag">thinking</a></div>
+  </div>
+  <nav><ul class="pager"><li class="next"><a href="/js/page/2/">Next</a></li></ul></nav>
+</body></html>
+"""
+
+
+def _assert_renders_via_playwright(request) -> None:
+    """Assert a request routes through Playwright and waits for the quotes."""
+    assert request.meta["playwright"] is True
+    methods = request.meta["playwright_page_methods"]
+    assert [(m.method, m.args) for m in methods] == [
+        ("wait_for_selector", ("div.quote",)),
+    ]
+
+
+def _drain(agen) -> list:
+    """Collect an async generator into a list without an asyncio plugin."""
+
+    async def collect():
+        return [item async for item in agen]
+
+    return asyncio.run(collect())
+
+
+def test_quotes_js_start_requests_wait_for_rendered_quotes() -> None:
+    requests = list(QuotesJsSpider().start_requests())
+    assert [r.url for r in requests] == [_JS_URL]
+    _assert_renders_via_playwright(requests[0])
+
+
+def test_quotes_js_start_waits_for_rendered_quotes() -> None:
+    """Scrapy >= 2.13 seeds from start(), ignoring start_requests() entirely.
+
+    Relying on the inherited start() would send a plain request for each
+    start_urls entry and parse the un-rendered HTML, yielding no quotes.
+    """
+    requests = _drain(QuotesJsSpider().start())
+    assert [r.url for r in requests] == [_JS_URL]
+    _assert_renders_via_playwright(requests[0])
+
+
+def test_quotes_js_parse_reads_rendered_dom() -> None:
+    results = list(QuotesJsSpider().parse(_response(_JS_RENDERED_HTML, _JS_URL)))
+    assert [r for r in results if isinstance(r, dict)] == [
+        {
+            "text": '"The world as we have created it."',
+            "author": "Albert Einstein",
+            "tags": ["change", "thinking"],
+            "url": _JS_URL,
+        },
+    ]
+
+
+def test_quotes_js_pagination_request_also_renders() -> None:
+    """A follow-up request that skipped Playwright would parse an empty page."""
+    results = list(QuotesJsSpider().parse(_response(_JS_RENDERED_HTML, _JS_URL)))
+    next_reqs = [r for r in results if not isinstance(r, dict)]
+    assert [r.url for r in next_reqs] == ["https://quotes.toscrape.com/js/page/2/"]
+    _assert_renders_via_playwright(next_reqs[0])
