@@ -6,7 +6,12 @@ per spider or per call as needed.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from dotenv import load_dotenv
+
+if TYPE_CHECKING:
+    from playwright.async_api import Request as PlaywrightRequest
 
 load_dotenv()
 
@@ -52,6 +57,28 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 PLAYWRIGHT_BROWSER_TYPE = "chromium"
 PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30_000
+
+# Subresource types to drop before they hit the network. A rendered page pulls
+# every image, font and video the browser would show a human, none of which the
+# parser reads — on an image-heavy listing page that is the bulk of the bytes and
+# most of the wall-clock. Stylesheets are deliberately kept: waits like
+# ``wait_for_selector`` resolve on element visibility, which CSS decides, so
+# dropping them makes renders flaky. Add "script" only for pages whose content
+# is server-rendered — on a JS-rendered target it aborts the render itself.
+PLAYWRIGHT_ABORT_RESOURCE_TYPES = frozenset({"image", "font", "media"})
+
+
+def should_abort_request(request: PlaywrightRequest) -> bool:
+    """Return True for in-page requests whose bytes the parser never needs.
+
+    The Playwright handler calls this for every request the page makes and
+    aborts the flagged ones. Tune via ``PLAYWRIGHT_ABORT_RESOURCE_TYPES`` above,
+    or extend the body to match on ``request.url`` for analytics/ad hosts.
+    """
+    return request.resource_type in PLAYWRIGHT_ABORT_RESOURCE_TYPES
+
+
+PLAYWRIGHT_ABORT_REQUEST = should_abort_request
 
 # Middlewares.
 DOWNLOADER_MIDDLEWARES = {
