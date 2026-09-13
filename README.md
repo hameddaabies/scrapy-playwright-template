@@ -1,5 +1,7 @@
 # scrapy-playwright-template
 
+[![tests](https://github.com/hameddaabies/scrapy-playwright-template/actions/workflows/tests.yml/badge.svg)](https://github.com/hameddaabies/scrapy-playwright-template/actions/workflows/tests.yml)
+
 A production-shaped **Scrapy + Playwright** scaffold for scraping modern JS-heavy sites at scale. Ships with the pieces you actually need in production — user-agent rotation, proxy plumbing, retry middleware, a JSON-Lines pipeline, and a clean example spider — without the YAGNI cruft tutorials bolt on.
 
 ## What's in the box
@@ -92,6 +94,7 @@ This template gives you stage 1–2. Stage 3 is a `.env` change. Stage 4 is an H
 
 ```
 scrapy-playwright-template/
+├── .github/workflows/tests.yml   # CI: pytest on 3.10 + 3.12
 ├── scrapy.cfg
 ├── myscraper/
 │   ├── __init__.py
