@@ -94,7 +94,7 @@ This template gives you stage 1–2. Stage 3 is a `.env` change. Stage 4 is an H
 
 ```
 scrapy-playwright-template/
-├── .github/workflows/tests.yml   # CI: pytest on 3.10 + 3.12
+├── .github/workflows/tests.yml   # CI: ruff lint + pytest on 3.10 + 3.12
 ├── scrapy.cfg
 ├── myscraper/
 │   ├── __init__.py
@@ -109,6 +109,7 @@ scrapy-playwright-template/
 │       └── quotes_js.py      # Playwright-rendered spider (quotes.toscrape.com/js/)
 ├── tests/                    # fixture-driven spider/middleware/pipeline tests
 ├── requirements.txt
+├── pyproject.toml            # ruff lint config (no packaging metadata)
 ├── .env.example
 └── README.md
 ```

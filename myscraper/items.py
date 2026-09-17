@@ -9,7 +9,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, field_validator
 
 
-def _require_absolute_url(cls, v: str) -> str:  # noqa: ANN001
+def _require_absolute_url(cls, v: str) -> str:
     """Reject relative or scheme-less URLs.
 
     A spider that forgets ``urljoin()`` on a relative ``href`` yields a URL

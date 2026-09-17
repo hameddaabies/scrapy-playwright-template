@@ -1,0 +1,36 @@
+# Tooling config only. This template is a Scrapy project that runs in place
+# rather than an installable distribution, so there is no [project] or
+# [build-system] table here — just the linter settings CI enforces.
+
+[tool.ruff]
+# The widest line in the tree is 96 chars (a wrapped User-Agent literal).
+# 100 keeps the existing hand-wrapped prose intact instead of forcing a
+# whole-tree reflow to fit 88.
+line-length = 100
+# Matches the CI matrix floor; the codebase uses PEP 604 (``X | None``) unions.
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle + pyflakes
+    "I",            # import sorting
+    "UP",           # pyupgrade
+    "B",            # bugbear
+    "C4",           # comprehension rewrites
+    "SIM",          # simplifications
+    "RET",          # return-path cleanups
+    "PIE",          # misc lints
+    "TID",          # banned/relative imports
+    "PTH",          # prefer pathlib over os.path
+    "N",            # pep8-naming
+    "T20",          # no stray print()/pprint() in library code
+    "RUF",          # ruff-specific, incl. unused-noqa
+]
+ignore = [
+    # Spiders declare ``start_urls`` / ``custom_settings`` as mutable class
+    # attributes. That is Scrapy's documented interface, not a shared-state bug.
+    "RUF012",
+    # A middleware's ``process_request`` returning None explicitly is how Scrapy
+    # spells "keep processing this request"; the bare return reads as a mistake.
+    "RET501",
+]
