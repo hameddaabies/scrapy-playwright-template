@@ -7,8 +7,11 @@ from types import SimpleNamespace
 import pytest
 
 from myscraper.settings import (
+    CONCURRENT_REQUESTS,
+    CONCURRENT_REQUESTS_PER_DOMAIN,
     PLAYWRIGHT_ABORT_REQUEST,
     PLAYWRIGHT_ABORT_RESOURCE_TYPES,
+    PLAYWRIGHT_MAX_PAGES_PER_CONTEXT,
     should_abort_request,
 )
 
@@ -34,3 +37,15 @@ def test_keeps_stylesheets_so_visibility_waits_stay_reliable() -> None:
 
 def test_setting_points_at_the_predicate() -> None:
     assert PLAYWRIGHT_ABORT_REQUEST is should_abort_request
+
+
+def test_page_cap_does_not_exceed_crawl_concurrency() -> None:
+    """Scrapy never has more than CONCURRENT_REQUESTS in flight, so tabs above
+    that ceiling can never be opened — the extra quota only misleads."""
+    assert PLAYWRIGHT_MAX_PAGES_PER_CONTEXT <= CONCURRENT_REQUESTS
+
+
+def test_page_cap_leaves_pacing_to_the_politeness_settings() -> None:
+    """Below the per-domain concurrency the tab semaphore, not DOWNLOAD_DELAY
+    and autothrottle, would govern how fast a single-domain crawl renders."""
+    assert PLAYWRIGHT_MAX_PAGES_PER_CONTEXT >= CONCURRENT_REQUESTS_PER_DOMAIN

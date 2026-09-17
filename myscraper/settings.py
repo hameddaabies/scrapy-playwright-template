@@ -58,6 +58,17 @@ PLAYWRIGHT_BROWSER_TYPE = "chromium"
 PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30_000
 
+# Concurrent browser tabs allowed per context. Left unset, scrapy-playwright
+# defaults this to CONCURRENT_REQUESTS, so raising crawl concurrency silently
+# raises browser memory too — each page is a real tab with its own renderer
+# process, costing far more RSS than the in-flight HTTP request it replaces.
+# Pinning it decouples the two: plain HTTP still runs CONCURRENT_REQUESTS wide
+# while renders stay bounded. The cap is a per-context semaphore, so excess
+# Playwright requests wait for a free tab rather than failing. Keep it at or
+# above CONCURRENT_REQUESTS_PER_DOMAIN, or the tab cap — not the politeness
+# settings — becomes what actually paces a single-domain crawl.
+PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 4
+
 # Subresource types to drop before they hit the network. A rendered page pulls
 # every image, font and video the browser would show a human, none of which the
 # parser reads — on an image-heavy listing page that is the bulk of the bytes and
