@@ -77,7 +77,9 @@ Edit `.env`:
 PROXY_URL=http://user:pass@proxy-host:port
 ```
 
-The middleware reads this env var on every request. Restart the crawl.
+`ProxyMiddleware` applies it to plain HTTP requests, and `settings.py` passes it to the
+Playwright browser as a launch option — scrapy-playwright ignores `meta["proxy"]`, so
+rendered requests would otherwise bypass the proxy. Restart the crawl.
 
 ## Escalation pattern (production notes)
 

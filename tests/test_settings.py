@@ -12,6 +12,7 @@ from myscraper.settings import (
     PLAYWRIGHT_ABORT_REQUEST,
     PLAYWRIGHT_ABORT_RESOURCE_TYPES,
     PLAYWRIGHT_MAX_PAGES_PER_CONTEXT,
+    playwright_proxy,
     should_abort_request,
 )
 
@@ -49,3 +50,24 @@ def test_page_cap_leaves_pacing_to_the_politeness_settings() -> None:
     """Below the per-domain concurrency the tab semaphore, not DOWNLOAD_DELAY
     and autothrottle, would govern how fast a single-domain crawl renders."""
     assert PLAYWRIGHT_MAX_PAGES_PER_CONTEXT >= CONCURRENT_REQUESTS_PER_DOMAIN
+
+
+def test_proxy_disabled_without_proxy_url() -> None:
+    assert playwright_proxy(None) is None
+    assert playwright_proxy("") is None
+
+
+def test_proxy_without_credentials_keeps_only_server() -> None:
+    assert playwright_proxy("http://proxy.example:8080") == {
+        "server": "http://proxy.example:8080"
+    }
+
+
+def test_proxy_credentials_are_split_out_and_decoded() -> None:
+    """Playwright rejects inline credentials, and providers often issue
+    passwords with reserved characters that must be percent-encoded in a URL."""
+    assert playwright_proxy("http://user:p%40ss@proxy.example:8080") == {
+        "server": "http://proxy.example:8080",
+        "username": "user",
+        "password": "p@ss",
+    }

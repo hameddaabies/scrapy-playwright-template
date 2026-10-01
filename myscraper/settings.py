@@ -6,7 +6,9 @@ per spider or per call as needed.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
+from urllib.parse import unquote, urlsplit
 
 from dotenv import load_dotenv
 
@@ -55,7 +57,34 @@ DOWNLOAD_HANDLERS = {
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 PLAYWRIGHT_BROWSER_TYPE = "chromium"
-PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
+
+
+def playwright_proxy(proxy_url: str | None) -> dict[str, str] | None:
+    """Translate a ``PROXY_URL`` into Playwright's ``proxy`` launch option.
+
+    ``ProxyMiddleware`` sets ``request.meta["proxy"]``, which Scrapy's HTTP
+    downloader honours but the Playwright handler ignores — without this,
+    rendered requests silently go out from the host's own IP. Playwright wants
+    the credentials split out of the URL rather than inline, so they are
+    separated (and percent-decoded) here. Note Chromium does not support
+    authenticated ``socks5://`` proxies.
+    """
+    if not proxy_url:
+        return None
+    parts = urlsplit(proxy_url)
+    server = f"{parts.scheme}://{parts.hostname}"
+    if parts.port:
+        server += f":{parts.port}"
+    proxy = {"server": server}
+    if parts.username:
+        proxy["username"] = unquote(parts.username)
+        proxy["password"] = unquote(parts.password or "")
+    return proxy
+
+
+PLAYWRIGHT_LAUNCH_OPTIONS: dict[str, object] = {"headless": True}
+if _proxy := playwright_proxy(os.getenv("PROXY_URL") or None):
+    PLAYWRIGHT_LAUNCH_OPTIONS["proxy"] = _proxy
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30_000
 
 # Concurrent browser tabs allowed per context. Left unset, scrapy-playwright
