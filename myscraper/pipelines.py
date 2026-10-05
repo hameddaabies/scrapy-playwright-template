@@ -29,10 +29,15 @@ class ValidationPipeline:
     Scrapy's catch-all ``item_dropped_count``, which also counts items dropped
     for other reasons. Stats wiring is optional: when constructed without a
     stats collector (e.g. in unit tests) the counters are simply skipped.
+
+    Items from a spider with no entry in ``_SPIDER_MODELS`` pass through
+    unvalidated; a warning is logged once per spider so a newly added spider's
+    unchecked output doesn't go unnoticed.
     """
 
     def __init__(self, stats=None) -> None:  # type: ignore[no-untyped-def]
         self.stats = stats
+        self._warned_unmapped: set[str] = set()
 
     @classmethod
     def from_crawler(cls, crawler):  # type: ignore[no-untyped-def]
@@ -41,6 +46,13 @@ class ValidationPipeline:
     def process_item(self, item, spider):  # type: ignore[no-untyped-def]
         model = _SPIDER_MODELS.get(spider.name)
         if model is None:
+            if spider.name not in self._warned_unmapped:
+                self._warned_unmapped.add(spider.name)
+                spider.logger.warning(
+                    "ValidationPipeline: no schema registered for spider '%s'; "
+                    "its items pass through unvalidated (add it to _SPIDER_MODELS)",
+                    spider.name,
+                )
             return item
         try:
             validated = model.model_validate(dict(item))

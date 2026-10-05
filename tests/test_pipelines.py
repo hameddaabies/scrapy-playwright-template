@@ -112,6 +112,22 @@ def test_validation_passes_through_unknown_spider() -> None:
     assert result is item
 
 
+def test_validation_warns_once_per_unmapped_spider() -> None:
+    pipeline = ValidationPipeline()
+    spider = _spider(name="unmapped")
+    for _ in range(3):
+        pipeline.process_item({"anything": "goes"}, spider)
+    spider.logger.warning.assert_called_once()
+    assert "unmapped" in spider.logger.warning.call_args[0]
+
+
+def test_validation_does_not_warn_for_mapped_spider() -> None:
+    pipeline = ValidationPipeline()
+    spider = _spider(name="books")
+    pipeline.process_item(_valid_book(), spider)
+    spider.logger.warning.assert_not_called()
+
+
 def test_validation_uses_quote_schema_for_quotes_spider() -> None:
     pipeline = ValidationPipeline()
     quote = {
