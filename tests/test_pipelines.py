@@ -7,7 +7,11 @@ from unittest.mock import MagicMock
 import pytest
 from scrapy.exceptions import DropItem
 
-from myscraper.pipelines import ItemCountPipeline, ValidationPipeline
+from myscraper.pipelines import (
+    DuplicateUrlPipeline,
+    ItemCountPipeline,
+    ValidationPipeline,
+)
 
 
 def _spider(name: str = "test") -> MagicMock:
@@ -177,3 +181,26 @@ def test_validation_does_not_touch_stats_for_valid_item() -> None:
     pipeline = ValidationPipeline(stats=stats)
     pipeline.process_item(_valid_book(), _spider(name="books"))
     assert stats.values == {}
+
+
+def test_duplicate_url_dropped_and_counted() -> None:
+    stats = MagicMock()
+    pipeline = DuplicateUrlPipeline(stats=stats)
+    spider = _spider()
+    item = {"url": "https://example.com/a"}
+    assert pipeline.process_item(item, spider) is item
+    with pytest.raises(DropItem, match="duplicate url"):
+        pipeline.process_item({"url": "https://example.com/a"}, spider)
+    stats.inc_value.assert_called_once_with("dedupe/dropped")
+
+
+def test_distinct_and_urlless_items_pass_through() -> None:
+    pipeline = DuplicateUrlPipeline()
+    spider = _spider()
+    for item in (
+        {"url": "https://example.com/a"},
+        {"url": "https://example.com/b"},
+        {"title": "no url"},
+        {"title": "no url"},
+    ):
+        assert pipeline.process_item(item, spider) is item

@@ -145,6 +145,8 @@ DOWNLOADER_MIDDLEWARES = {
 # Item pipelines.
 ITEM_PIPELINES = {
     "myscraper.pipelines.ValidationPipeline": 300,
+    # Drop items whose url was already yielded this run (counted in dedupe/dropped).
+    # "myscraper.pipelines.DuplicateUrlPipeline": 400,
     # Log per-run item count after validation — enable to track yield per spider.
     # "myscraper.pipelines.ItemCountPipeline": 900,
 }

@@ -2,6 +2,7 @@
 
 ValidationPipeline  — rejects malformed items at the schema boundary.
 ItemCountPipeline   — logs total items scraped at the end of each run.
+DuplicateUrlPipeline — drops items whose ``url`` was already yielded this run.
 """
 
 from __future__ import annotations
@@ -89,3 +90,33 @@ class ItemCountPipeline:
             self._count,
             spider.name,
         )
+
+
+class DuplicateUrlPipeline:
+    """Drops items whose ``url`` was already yielded earlier in the same run.
+
+    Listing pages often link the same detail page twice (e.g. a "featured"
+    block plus the main grid), and Scrapy's request dupefilter does not catch
+    items yielded from different responses. Each drop is recorded under the
+    ``dedupe/dropped`` stat. Items without a ``url`` pass through untouched.
+    Seen URLs are held in memory, so the set grows with the crawl.
+    """
+
+    def __init__(self, stats=None) -> None:  # type: ignore[no-untyped-def]
+        self.stats = stats
+        self._seen: set[str] = set()
+
+    @classmethod
+    def from_crawler(cls, crawler):  # type: ignore[no-untyped-def]
+        return cls(stats=crawler.stats)
+
+    def process_item(self, item, spider):  # type: ignore[no-untyped-def]
+        url = dict(item).get("url")
+        if url is None:
+            return item
+        if url in self._seen:
+            if self.stats is not None:
+                self.stats.inc_value("dedupe/dropped")
+            raise DropItem(f"duplicate url: {url}")
+        self._seen.add(url)
+        return item
