@@ -46,9 +46,9 @@ jobs:
 
       - name: Install dependencies
         # No ``playwright install`` here on purpose. The suite drives spiders
-        # through fixture HTML and asserts on request metadata, so it never
-        # launches a browser — downloading Chromium would add ~100MB and a
-        # minute per job for nothing. Add it if a test ever needs a real render.
+        # through fixture HTML and asserts on request metadata; the only
+        # real-browser module (tests/test_browser_render.py) skips itself when
+        # Chromium is absent, so CI avoids the ~100MB download per job.
         run: pip install -r requirements.txt
 
       - name: Run tests
