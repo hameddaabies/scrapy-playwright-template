@@ -27,6 +27,7 @@ cp .env.example .env          # edit if you want to use a proxy
 scrapy crawl books -O output/books.jsonl
 scrapy crawl quotes -O output/quotes.jsonl
 scrapy crawl quotes_js -O output/quotes_js.jsonl   # Playwright-rendered
+scrapy crawl quotes_scroll -O output/quotes_scroll.jsonl   # infinite scroll
 ```
 
 Check `output/books.jsonl` — you should see ~1000 books with title, price, availability, and rating.
@@ -108,7 +109,8 @@ scrapy-playwright-template/
 │       ├── __init__.py
 │       ├── books.py          # example spider (books.toscrape.com)
 │       ├── quotes.py         # example spider (quotes.toscrape.com)
-│       └── quotes_js.py      # Playwright-rendered spider (quotes.toscrape.com/js/)
+│       ├── quotes_js.py      # Playwright-rendered spider (quotes.toscrape.com/js/)
+│       └── quotes_scroll.py  # Infinite-scroll spider (quotes.toscrape.com/scroll)
 ├── tests/                    # fixture-driven spider/middleware/pipeline tests
 ├── requirements.txt
 ├── pyproject.toml            # ruff lint config (no packaging metadata)
