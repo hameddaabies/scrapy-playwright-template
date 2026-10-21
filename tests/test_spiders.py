@@ -14,6 +14,7 @@ from scrapy.http import HtmlResponse, Request
 from myscraper.spiders.books import BooksSpider
 from myscraper.spiders.quotes import QuotesSpider
 from myscraper.spiders.quotes_js import QuotesJsSpider
+from myscraper.spiders.quotes_scroll import QuotesScrollSpider
 
 _DETAIL_URL = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
 
@@ -270,3 +271,14 @@ def test_quotes_js_pagination_request_also_renders() -> None:
     next_reqs = [r for r in results if not isinstance(r, dict)]
     assert [r.url for r in next_reqs] == ["https://quotes.toscrape.com/js/page/2/"]
     _assert_renders_via_playwright(next_reqs[0])
+
+
+def test_quotes_scroll_waits_then_scrolls_until_stable() -> None:
+    """Without the scroll step only the first batch of ten quotes is parsed."""
+    requests = _drain(QuotesScrollSpider().start())
+    assert [r.url for r in requests] == ["https://quotes.toscrape.com/scroll"]
+    assert requests[0].meta["playwright"] is True
+    wait, scroll = requests[0].meta["playwright_page_methods"]
+    assert (wait.method, wait.args) == ("wait_for_selector", ("div.quote",))
+    assert scroll.method == "evaluate"
+    assert scroll.args[1] == {"selector": "div.quote", "pauseMs": 1000, "maxRounds": 30}

@@ -18,6 +18,7 @@ _SPIDER_MODELS: dict[str, type[BaseModel]] = {
     "quotes": QuoteItem,
     # The Playwright-rendered variant yields the same schema as "quotes".
     "quotes_js": QuoteItem,
+    "quotes_scroll": QuoteItem,
 }
 
 
