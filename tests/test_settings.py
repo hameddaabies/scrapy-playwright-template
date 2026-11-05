@@ -5,6 +5,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from scrapy.downloadermiddlewares.retry import RetryMiddleware
+from scrapy.settings import Settings
+from scrapy.settings.default_settings import RETRY_EXCEPTIONS as _DEFAULT_RETRY_EXCEPTIONS
 
 from myscraper.settings import (
     CONCURRENT_REQUESTS,
@@ -12,6 +16,7 @@ from myscraper.settings import (
     PLAYWRIGHT_ABORT_REQUEST,
     PLAYWRIGHT_ABORT_RESOURCE_TYPES,
     PLAYWRIGHT_MAX_PAGES_PER_CONTEXT,
+    RETRY_EXCEPTIONS,
     playwright_proxy,
     should_abort_request,
 )
@@ -71,3 +76,25 @@ def test_proxy_credentials_are_split_out_and_decoded() -> None:
         "username": "user",
         "password": "p@ss",
     }
+
+
+def _retried_exceptions(settings: Settings) -> tuple[type[BaseException], ...]:
+    """Exception types Scrapy's RetryMiddleware loads from ``settings``."""
+    return RetryMiddleware(settings).exceptions_to_retry
+
+
+def test_playwright_timeout_is_retried() -> None:
+    settings = Settings()
+    settings.setmodule("myscraper.settings")
+    exc = PlaywrightTimeoutError("Timeout 30000ms exceeded.")
+    assert isinstance(exc, _retried_exceptions(settings))
+
+
+def test_scrapy_defaults_alone_would_not_retry_playwright_timeout() -> None:
+    # Guards the premise: if a future Scrapy adds it by default, drop the override.
+    exc = PlaywrightTimeoutError("Timeout 30000ms exceeded.")
+    assert not isinstance(exc, _retried_exceptions(Settings()))
+
+
+def test_default_retry_exceptions_are_kept() -> None:
+    assert set(_DEFAULT_RETRY_EXCEPTIONS) <= set(RETRY_EXCEPTIONS)

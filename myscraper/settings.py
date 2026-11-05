@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
 from dotenv import load_dotenv
+from scrapy.settings.default_settings import RETRY_EXCEPTIONS as _DEFAULT_RETRY_EXCEPTIONS
 
 if TYPE_CHECKING:
     from playwright.async_api import Request as PlaywrightRequest
@@ -48,6 +49,13 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 2.0
 RETRY_ENABLED = True
 RETRY_TIMES = 3
 RETRY_HTTP_CODES = [429, 500, 502, 503, 504, 522, 524, 408]
+# Playwright raises its own TimeoutError when a rendered page misses
+# PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT or a wait_for_selector page method times
+# out. It subclasses plain Exception rather than OSError, so Scrapy's default
+# list does not match it and the request is dropped on the first timeout. Extend
+# the defaults (rather than replacing them) so plain-HTTP network errors still
+# retry as before.
+RETRY_EXCEPTIONS = [*_DEFAULT_RETRY_EXCEPTIONS, "playwright.async_api.TimeoutError"]
 
 # Playwright download handler. Request with meta={"playwright": True} to use.
 DOWNLOAD_HANDLERS = {
