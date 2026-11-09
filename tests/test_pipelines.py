@@ -87,6 +87,12 @@ def test_validation_keeps_book_with_unknown_rating() -> None:
     assert pipeline.process_item(unrated, _spider(name="books")) == unrated
 
 
+def test_validation_keeps_book_with_unknown_price() -> None:
+    pipeline = ValidationPipeline()
+    unpriced = _valid_book() | {"price_gbp": None}
+    assert pipeline.process_item(unpriced, _spider(name="books")) == unpriced
+
+
 def test_validation_drops_book_with_negative_price() -> None:
     pipeline = ValidationPipeline()
     bad = _valid_book() | {"price_gbp": -1.0}

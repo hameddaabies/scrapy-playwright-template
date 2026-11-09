@@ -75,9 +75,9 @@ def test_parse_detail_reports_missing_rating_element_as_none() -> None:
     assert _parse_detail(html)["rating"] is None
 
 
-def test_parse_detail_defaults_missing_price_to_zero() -> None:
+def test_parse_detail_reports_missing_price_as_none() -> None:
     html = _BOOK_DETAIL_HTML.replace('<p class="price_color">£51.77</p>', "")
-    assert _parse_detail(html)["price_gbp"] == 0.0
+    assert _parse_detail(html)["price_gbp"] is None
 
 
 def test_parse_detail_keeps_thousands_separator_in_price() -> None:

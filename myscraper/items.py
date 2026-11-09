@@ -24,7 +24,9 @@ def _require_absolute_url(cls, v: str) -> str:
 
 class BookItem(BaseModel):
     title: str
-    price_gbp: float = Field(ge=0)
+    # Optional so an unreadable price is recorded as "unknown" rather than
+    # fabricated as a free book. A present value is still bounded at >= 0.
+    price_gbp: float | None = Field(default=None, ge=0)
     in_stock: bool
     # Optional so an unreadable star-rating is recorded as "unknown" rather
     # than fabricated as a one-star book. A present value is still bounded 1-5.

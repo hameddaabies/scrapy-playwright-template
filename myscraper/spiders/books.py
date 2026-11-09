@@ -17,7 +17,7 @@ import scrapy
 RATING_WORDS = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 
 
-def parse_price(text: str) -> float:
+def parse_price(text: str) -> float | None:
     """Parse a price from a currency string, tolerating thousands separators.
 
     Strips the leading currency symbol and digit-group commas before parsing,
@@ -25,12 +25,14 @@ def parse_price(text: str) -> float:
     truncating to ``234.56`` (a naive ``\\d+\\.\\d+`` match starts at the comma).
     The fractional part is optional, so a whole-number price such as ``"£52"``
     yields ``52.0`` rather than falling through to the missing-price default.
-    Returns ``0.0`` when no numeric price is found, so a missing price degrades
-    gracefully rather than crashing the parse.
+    Returns ``None`` when no numeric price is found. A missing price must stay
+    distinguishable from a genuinely free book: defaulting to ``0.0`` would
+    pass the ``ge=0`` schema bound and silently fabricate a free item whenever
+    the price selector drifts.
     """
     match = re.search(r"\d[\d,]*(?:\.\d+)?", text)
     if not match:
-        return 0.0
+        return None
     return float(match.group(0).replace(",", ""))
 
 
