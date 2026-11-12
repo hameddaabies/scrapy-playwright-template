@@ -164,6 +164,26 @@ def test_validation_drops_quote_with_scheme_less_url() -> None:
         pipeline.process_item(quote, _spider(name="quotes"))
 
 
+@pytest.mark.parametrize("field", ["text", "author"])
+def test_validation_drops_quote_with_empty_required_text(field: str) -> None:
+    """A drifted selector read via ``.get("")`` must not yield a blank quote."""
+    pipeline = ValidationPipeline()
+    quote = {
+        "text": "The world as we have created it is a process of our thinking.",
+        "author": "Albert Einstein",
+        "tags": [],
+        "url": "https://quotes.toscrape.com/page/1/",
+    }
+    with pytest.raises(DropItem):
+        pipeline.process_item(quote | {field: ""}, _spider(name="quotes"))
+
+
+def test_validation_drops_book_with_empty_title() -> None:
+    pipeline = ValidationPipeline()
+    with pytest.raises(DropItem):
+        pipeline.process_item(_valid_book() | {"title": ""}, _spider(name="books"))
+
+
 class _StubStats:
     """Minimal stand-in for Scrapy's StatsCollector."""
 

@@ -23,7 +23,9 @@ def _require_absolute_url(cls, v: str) -> str:
 
 
 class BookItem(BaseModel):
-    title: str
+    # Spiders read text with ``.get("")``, so a drifted selector yields "".
+    # Require a non-empty value so that drops the item instead of storing it.
+    title: str = Field(min_length=1)
     # Optional so an unreadable price is recorded as "unknown" rather than
     # fabricated as a free book. A present value is still bounded at >= 0.
     price_gbp: float | None = Field(default=None, ge=0)
@@ -37,8 +39,9 @@ class BookItem(BaseModel):
 
 
 class QuoteItem(BaseModel):
-    text: str
-    author: str
+    # Non-empty for the same reason as ``BookItem.title``.
+    text: str = Field(min_length=1)
+    author: str = Field(min_length=1)
     tags: list[str]
     url: str
 
