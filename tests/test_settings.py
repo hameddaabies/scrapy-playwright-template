@@ -78,6 +78,20 @@ def test_proxy_credentials_are_split_out_and_decoded() -> None:
     }
 
 
+@pytest.mark.parametrize("scheme", ["socks5", "socks5h", "socks4"])
+def test_proxy_rejects_authenticated_socks(scheme: str) -> None:
+    """Chromium cannot authenticate to SOCKS proxies; fail at settings load
+    with the scheme named, not later at browser launch."""
+    with pytest.raises(ValueError, match=f"{scheme}://"):
+        playwright_proxy(f"{scheme}://user:pass@proxy.example:1080")
+
+
+def test_proxy_allows_unauthenticated_socks() -> None:
+    assert playwright_proxy("socks5://proxy.example:1080") == {
+        "server": "socks5://proxy.example:1080"
+    }
+
+
 def _retried_exceptions(settings: Settings) -> tuple[type[BaseException], ...]:
     """Exception types Scrapy's RetryMiddleware loads from ``settings``."""
     return RetryMiddleware(settings).exceptions_to_retry

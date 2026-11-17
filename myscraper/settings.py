@@ -74,12 +74,20 @@ def playwright_proxy(proxy_url: str | None) -> dict[str, str] | None:
     downloader honours but the Playwright handler ignores — without this,
     rendered requests silently go out from the host's own IP. Playwright wants
     the credentials split out of the URL rather than inline, so they are
-    separated (and percent-decoded) here. Note Chromium does not support
-    authenticated ``socks5://`` proxies.
+    separated (and percent-decoded) here.
+
+    Raises ``ValueError`` for a SOCKS URL carrying credentials: Chromium does
+    not support authenticated SOCKS proxies and would otherwise fail at browser
+    launch with an opaque error, after the crawl has already started.
     """
     if not proxy_url:
         return None
     parts = urlsplit(proxy_url)
+    if parts.scheme.startswith("socks") and parts.username:
+        raise ValueError(
+            f"PROXY_URL uses {parts.scheme}:// with credentials, which Chromium "
+            "does not support; use an http(s) proxy or an unauthenticated SOCKS one"
+        )
     server = f"{parts.scheme}://{parts.hostname}"
     if parts.port:
         server += f":{parts.port}"
