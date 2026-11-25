@@ -67,6 +67,11 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 PLAYWRIGHT_BROWSER_TYPE = "chromium"
 
 
+# Proxy schemes Chromium's proxy parser accepts. Note ``socks5h`` (common in
+# requests/curl configs) is not one of them.
+PLAYWRIGHT_PROXY_SCHEMES = frozenset({"http", "https", "socks4", "socks5"})
+
+
 def playwright_proxy(proxy_url: str | None) -> dict[str, str] | None:
     """Translate a ``PROXY_URL`` into Playwright's ``proxy`` launch option.
 
@@ -76,13 +81,22 @@ def playwright_proxy(proxy_url: str | None) -> dict[str, str] | None:
     the credentials split out of the URL rather than inline, so they are
     separated (and percent-decoded) here.
 
-    Raises ``ValueError`` for a SOCKS URL carrying credentials: Chromium does
-    not support authenticated SOCKS proxies and would otherwise fail at browser
-    launch with an opaque error, after the crawl has already started.
+    Raises ``ValueError`` for a URL Chromium cannot use: a scheme outside
+    ``PLAYWRIGHT_PROXY_SCHEMES`` (including a scheme-less ``host:port``, which
+    ``urlsplit`` reads as scheme ``host``), a missing hostname, or a SOCKS URL
+    carrying credentials, which Chromium does not support. Each would otherwise
+    fail at browser launch with an opaque error, after the crawl has started.
     """
     if not proxy_url:
         return None
     parts = urlsplit(proxy_url)
+    if parts.scheme not in PLAYWRIGHT_PROXY_SCHEMES:
+        raise ValueError(
+            f"PROXY_URL scheme {parts.scheme or '(none)'}:// is not supported; "
+            f"expected scheme://host[:port] with one of {sorted(PLAYWRIGHT_PROXY_SCHEMES)}"
+        )
+    if not parts.hostname:
+        raise ValueError(f"PROXY_URL has no hostname after {parts.scheme}://")
     if parts.scheme.startswith("socks") and parts.username:
         raise ValueError(
             f"PROXY_URL uses {parts.scheme}:// with credentials, which Chromium "

@@ -92,6 +92,25 @@ def test_proxy_allows_unauthenticated_socks() -> None:
     }
 
 
+@pytest.mark.parametrize(
+    "proxy_url",
+    [
+        "proxy.example:8080",  # scheme-less: urlsplit reads "proxy.example" as the scheme
+        "ftp://proxy.example:21",
+        "socks5h://proxy.example:1080",
+    ],
+)
+def test_proxy_rejects_unsupported_scheme(proxy_url: str) -> None:
+    """Fail at settings load instead of handing Chromium ``host://None``."""
+    with pytest.raises(ValueError, match="is not supported"):
+        playwright_proxy(proxy_url)
+
+
+def test_proxy_rejects_missing_hostname() -> None:
+    with pytest.raises(ValueError, match="no hostname"):
+        playwright_proxy("http://:8080")
+
+
 def _retried_exceptions(settings: Settings) -> tuple[type[BaseException], ...]:
     """Exception types Scrapy's RetryMiddleware loads from ``settings``."""
     return RetryMiddleware(settings).exceptions_to_retry
