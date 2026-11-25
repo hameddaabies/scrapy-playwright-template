@@ -282,3 +282,22 @@ def test_quotes_scroll_waits_then_scrolls_until_stable() -> None:
     assert (wait.method, wait.args) == ("wait_for_selector", ("div.quote",))
     assert scroll.method == "evaluate"
     assert scroll.args[1] == {"selector": "div.quote", "pauseMs": 1000, "maxRounds": 30}
+
+
+def _scroll_response(scroll_result: dict) -> HtmlResponse:
+    request = next(iter(QuotesScrollSpider().start_requests()))
+    request.meta["playwright_page_methods"][-1].result = scroll_result
+    url = "https://quotes.toscrape.com/scroll"
+    return HtmlResponse(url=url, body=b"<html></html>", encoding="utf-8", request=request)
+
+
+def test_quotes_scroll_warns_when_loop_does_not_settle(caplog) -> None:
+    """Hitting max_scroll_rounds means more quotes were loading — a silent truncation."""
+    list(QuotesScrollSpider().parse(_scroll_response({"settled": False, "count": 300})))
+    assert "max_scroll_rounds=30" in caplog.text
+    assert "300 quotes" in caplog.text
+
+
+def test_quotes_scroll_quiet_when_loop_settles(caplog) -> None:
+    list(QuotesScrollSpider().parse(_scroll_response({"settled": True, "count": 100})))
+    assert "max_scroll_rounds" not in caplog.text

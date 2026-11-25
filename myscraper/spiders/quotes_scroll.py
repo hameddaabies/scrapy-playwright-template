@@ -19,18 +19,19 @@ from scrapy_playwright.page import PageMethod
 from myscraper.spiders.quotes_js import QuotesJsSpider
 
 # Scroll to the bottom, give the next batch time to land, and stop once a full
-# pause adds no quotes. ``max_rounds`` bounds the loop if the page never settles.
+# pause adds no quotes. ``max_rounds`` bounds the loop if the page never settles;
+# ``settled`` reports which of the two ended it, so a cut-off render is visible.
 SCROLL_UNTIL_STABLE_JS = """
 async ({ selector, pauseMs, maxRounds }) => {
   let previous = -1;
   for (let round = 0; round < maxRounds; round++) {
     const count = document.querySelectorAll(selector).length;
-    if (count === previous) break;
+    if (count === previous) return { settled: true, count };
     previous = count;
     window.scrollTo(0, document.body.scrollHeight);
     await new Promise((resolve) => setTimeout(resolve, pauseMs));
   }
-  return previous;
+  return { settled: false, count: document.querySelectorAll(selector).length };
 }
 """
 
@@ -63,3 +64,22 @@ class QuotesScrollSpider(QuotesJsSpider):
                 ],
             },
         )
+
+    def parse(self, response):
+        """Warn when the scroll loop hit ``max_scroll_rounds`` before settling.
+
+        scrapy-playwright stores each ``PageMethod``'s return value on its
+        ``result`` attribute. An unsettled loop means more quotes were still
+        loading, so the items below are a truncated set, not the full page.
+        """
+        methods = response.meta.get("playwright_page_methods") or []
+        scroll = methods[-1].result if methods else None
+        if isinstance(scroll, dict) and not scroll.get("settled", True):
+            self.logger.warning(
+                "Scroll loop hit max_scroll_rounds=%d before %s settled; "
+                "parsing a possibly truncated set of %d quotes",
+                self.max_scroll_rounds,
+                response.url,
+                scroll.get("count", 0),
+            )
+        yield from super().parse(response)
